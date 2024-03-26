@@ -1,8 +1,9 @@
-use std::net::SocketAddr;
-use std::path::PathBuf;
-
 use nix_cpio_generator::cpio_cache::CpioCache;
+use std::path::PathBuf;
 use structopt::StructOpt;
+use tokio::net::TcpListener;
+use tokio_stream::wrappers::TcpListenerStream;
+use tokio_stream::{StreamExt, StreamMap};
 use warp::Filter;
 
 #[macro_use]
@@ -91,11 +92,19 @@ async fn main() {
         .or(warp::head().and(initrd))
         .with(log);
 
+    let mut streams = StreamMap::new();
+    for addr in opt.listen {
+        streams.insert(
+            format!("{addr:?}"),
+            TcpListenerStream::new(
+                TcpListener::bind(addr)
+                    .await
+                    .expect("Failed to bind to address"),
+            ),
+        );
+    }
+
     warp::serve(routes)
-        .run(
-            opt.listen
-                .parse::<SocketAddr>()
-                .expect("Failed to parse the listen argument"),
-        )
+        .serve_incoming(streams.map(|(_, v)| v))
         .await;
 }

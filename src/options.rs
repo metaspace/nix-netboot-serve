@@ -22,7 +22,7 @@ pub struct Opt {
 
     /// IP:port to listen on
     #[structopt(long)]
-    pub listen: String,
+    pub listen: Vec<String>,
 
     /// Number of open files to set the ulimit to
     #[structopt(long, default_value = "50000")]
